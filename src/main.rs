@@ -4,12 +4,25 @@ use std::str::FromStr;
 use std::sync::mpsc;
 use std::thread;
 
-fn handle(tx: mpsc::Sender<u16>, host: net::IpAddr, port: u16) {
-    match net::TcpStream::connect((host, port)) {
-        Ok(_) => {
-            tx.send(port).unwrap();
+const NTHREADS: u16 = 4;
+const MAX_PORT: u16 = 65535;
+
+fn handle(tx: mpsc::Sender<u16>, host: net::IpAddr, start_port: u16, end_port: u16) {
+    let mut port = start_port + 1;
+
+    loop {
+        match net::TcpStream::connect((host, port)) {
+            Ok(_) => {
+                tx.send(port).unwrap();
+            }
+            Err(_) => {}
         }
-        Err(_) => {}
+
+        if end_port - NTHREADS <= port {
+            break;
+        }
+
+        port += NTHREADS;
     }
 }
 
@@ -33,12 +46,15 @@ fn main() {
         Err(_) => {}
     };
 
+    let start_port: u16 = 1;
+    let end_port: u16 = MAX_PORT;
+
     let (tx, rx) = mpsc::channel();
-    for port in 1..15000 {
+    for i in 0..NTHREADS {
         let tx = tx.clone();
 
         thread::spawn(move || {
-            handle(tx, host, port as u16)
+            handle(tx, host, (start_port + i) as u16, end_port);
         });
     }
 
