@@ -1,14 +1,13 @@
 use std::net;
-use std::str::FromStr;
 use std::sync::mpsc;
 use std::thread;
 
-fn handle(tx: mpsc::Sender<u16>, host: net::IpAddr,
+fn handle(tx: mpsc::Sender<u16>, addr: net::IpAddr,
           start_port: u16, end_port: u16, nthreads: u16) {
     let mut port = start_port + 1;
 
     loop {
-        match net::TcpStream::connect((host, port)) {
+        match net::TcpStream::connect((addr, port)) {
             Ok(_) => {
                 tx.send(port).unwrap();
             }
@@ -23,20 +22,8 @@ fn handle(tx: mpsc::Sender<u16>, host: net::IpAddr,
     }
 }
 
-pub fn portscan(host: String, start_port: u16, end_port: u16, nthreads: u16) {
-    println!("scanning {} from {} to {}...", &host, start_port, end_port);
-
-    let addr: net::IpAddr;
-    match net::IpAddr::from_str(&host) {
-        Ok(value) => {
-            addr = value;
-        }
-        Err(_) => {
-            addr = net::IpAddr::V4(
-                net::Ipv4Addr::new(127, 0, 0, 1)
-            );
-        }
-    };
+pub fn portscan(addr: net::IpAddr, start_port: u16, end_port: u16, nthreads: u16) {
+    println!("scanning {} from {} to {}...", &addr, start_port, end_port);
 
     let (tx, rx) = mpsc::channel();
     for i in 0..nthreads {
@@ -57,6 +44,6 @@ pub fn portscan(host: String, start_port: u16, end_port: u16, nthreads: u16) {
     println!("");
 
     for port in output {
-        println!("{} open", port);
+        println!("{}: open", port);
     }
 }
